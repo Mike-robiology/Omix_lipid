@@ -68,12 +68,13 @@ get_metadata <- function(multiassay,
 #'
 get_ID_names <- function(multiassay,
                           id,
+                          assay_name,
                           omic = "protein",
                           from = "uniprot_id",
                           to = "gene_name") {
   if (omic == "protein") {
     elementMetadata <- data.frame(
-      multiassay@ExperimentList@listData[["protein_raw"]]@elementMetadata@listData)
+      multiassay@ExperimentList@listData[[assay_name]]@elementMetadata@listData)
     new_id <- elementMetadata[[paste(to)]][match(
       id,
       elementMetadata[[paste(from)]]
@@ -82,7 +83,7 @@ get_ID_names <- function(multiassay,
   }
   if (omic == "rna") {
     elementMetadata <- data.frame(
-      multiassay@ExperimentList@listData[["rna_raw"]]@elementMetadata@listData)
+      multiassay@ExperimentList@listData[[assay_name]]@elementMetadata@listData)
     new_id <- elementMetadata[[paste(to)]][match(
       id,
       elementMetadata[[paste(from)]]
@@ -191,14 +192,11 @@ get_ID_type <- function(character_vector) {
 #'
 
 get_multimodal_object <- function(multiassay,
-                                  slots = c(
-                                    "rna_processed",
-                                    "protein_processed"
-                                  ),
+                                  slots = c(),
                                   intersect_genes = FALSE,
                                   ID_type = "gene_name",
                                   ...) {
-  multi <- multiassay[, , c(slots[1], slots[2])]
+  multi <- multiassay[, , slots]
   CompleteMulti <- multi[, MultiAssayExperiment::complete.cases(multi), ]
 
   if (intersect_genes == TRUE) {
@@ -243,11 +241,14 @@ get_multimodal_object <- function(multiassay,
     id_1 <- do.call(get_ID_type, args)
 
     if (id_1 != "gene_name") {
-      id3 <- rownames(CompleteMulti@ExperimentList@listData[[paste(slots[1])]])
+      assay_name <- grep('rna', slots, value = TRUE)
+      assay_name_raw <- gsub('processed', 'raw', assay_name)
+      id3 <- rownames(CompleteMulti@ExperimentList@listData[[assay_name]])
       args3 <- list(
         multiassay = multiassay,
         id = id3,
-        omic = "rna",
+        assay_name = assay_name_raw,
+        omic = 'rna',
         from = "ensembl_gene_id",
         to = "gene_name"
       )
@@ -262,11 +263,14 @@ get_multimodal_object <- function(multiassay,
     id_2 <- do.call(get_ID_type, args)
 
     if (id_2 != "gene_name") {
-      id4 <- rownames(CompleteMulti@ExperimentList@listData[[paste(slots[2])]])
+      assay_name <- grep('protein', slots, value = TRUE)
+      assay_name_raw <- gsub('processed', 'raw', assay_name)
+      id4 <- rownames(CompleteMulti@ExperimentList@listData[[assay_name]])
       args4 <- list(
         multiassay = multiassay,
         id = id4,
-        omic = "protein",
+        assay_name = assay_name_raw,
+        omic = 'protein',
         from = "uniprot_id",
         to = "gene_name"
       )

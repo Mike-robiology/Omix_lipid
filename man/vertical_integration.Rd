@@ -6,7 +6,7 @@
 \usage{
 vertical_integration(
   multiassay,
-  slots = c("rna_processed", "protein_processed"),
+  slots = c(),
   integration,
   intersect_genes = FALSE,
   ID_type = "gene_name",
@@ -20,7 +20,8 @@ vertical_integration(
   time = "pseudotime",
   scale_views = TRUE,
   try.N.clust = 2:4,
-  most_variable_feature = FALSE
+  most_variable_feature = FALSE,
+  use_basilisk = TRUE
 )
 }
 \arguments{

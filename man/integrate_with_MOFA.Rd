@@ -8,6 +8,7 @@ integrate_with_MOFA(
   multimodal_omics,
   num_factors = 5,
   scale_views = TRUE,
+  use_basilisk = TRUE,
   metadata
 )
 }

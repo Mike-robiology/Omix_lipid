@@ -43,109 +43,136 @@
 #' @importFrom org.Mm.eg.db org.Mm.eg.db
 #' @importFrom EnsDb.Hsapiens.v86 EnsDb.Hsapiens.v86
 #' @export
-generate_multiassay <- function(rawdata_rna,
-                                rawdata_protein,
-                                individual_to_sample = FALSE,
-                                map_rna,
-                                map_protein,
-                                metadata_rna,
-                                metadata_protein,
+generate_multiassay <- function(assay_list, # names = rna_raw, protein_raw, IDENTIFIER [generic_raw]
                                 individual_metadata,
-                                map_by_column,
-                                rna_qc_data = FALSE,
-                                rna_qc_data_matrix,
+                                map_list = NULL, # order & names must match the assay list
+                                sample_metadata_list = NULL,
+                                map_by_column = NULL, ## make optional as above; defaults to rownames
+                                qc_data_list = NULL, # names & order need to match those in assay_list
                                 organism = "human") {
-  if (!all(colnames(rawdata_rna) == rownames(metadata_rna))) {
+
+
+  # check for >= 2 assays provided
+  list_length <- length(assay_list)
+  if (list_length < 2) {
     stop(cli::cli_alert_danger(
-      paste("The columns in the", cli::style_bold("rawdata_rna"),
-        "should be same as the rows in", cli::style_bold("metadata_rna"),
-        sep = " "
+      paste("At least 2 assays should be provided in",
+            cli::style_bold("assay_list"),
+            sep = " "
       )
     ))
   }
 
-  if (!all(colnames(rawdata_protein) == rownames(metadata_protein))) {
+  ## get assay types
+  assay_names <- names(assay_list)
+  assay_types <- gsub(".*\\[(.*)\\].*", "\\1", assay_names)
+
+  ## check assay types match allowed
+  if (!all(assay_types %in% c("rna_raw", "protein_raw", "generic_raw"))) {
     stop(cli::cli_alert_danger(
-      paste("The columns in the", cli::style_bold("rawdata_protein"),
-        "should be same as the rows in", cli::style_bold("metadata_protein"),
-        sep = " "
+      "Assays should be of class rna_raw, protein_raw, or generic_raw"
+      ))
+  }
+
+  ## generate maps if not provided
+  if (is.null(map_list)) {
+    map_list <- lapply(assay_list, function(x) {
+      data.frame(
+        primary = colnames(x),
+        colname = colnames(x),
+        stringsAsFactors = FALSE
+      ) -> df
+      rownames(df) <- colnames(x)
+      return(df)
+    })
+  }
+
+  ## check assay & map order match
+  if (!identical(names(map_list), assay_names)) {
+    stop(cli::cli_alert_danger(
+      paste("Names of", cli::style_bold("map_list"),
+            "are not identical to", cli::style_bold("assay_list"),
+            sep = " "
       )
     ))
   }
 
-  if (!all(colnames(map_rna) == c("primary", "colname"))) {
+  ## generate sample_metadata_list if not provided
+  if (is.null(sample_metadata_list)) {
+    sample_metadata_list <-
+      lapply(1:list_length, function(x) individual_metadata)
+    names(sample_metadata_list) <- assay_names
+  }
+
+  ## check assay & metadata order match
+
+  if (!identical(names(sample_metadata_list), assay_names)) {
+    stop(cli::cli_alert_danger(
+      paste("Names of", cli::style_bold("sample_metadata_list"),
+            "are not identical to", cli::style_bold("assay_list"),
+            sep = " "
+      )
+    ))
+  }
+
+  if (!is.null(qc_data_list) &
+      !identical(names(qc_data_list), assay_names)) {
+    stop(cli::cli_alert_danger(
+      paste("Names of", cli::style_bold("qc_data_list"),
+            "are not identical to rna_raw assays in ",
+            cli::style_bold("assay_list"),
+            sep = " "
+      )
+    ))
+  }
+
+  ## function to check agreement of sample names and return unmatched
+  name_match <- function(list_1, list_2, f1 = "colnames", f2 = "rownames") {
+    l1 <- eval(as.name(list_1))
+    l2 <- eval(as.name(list_2))
+    sapply(1:length(l1),
+           function(i) {
+             !identical(
+               eval(as.name(f1))(l1[[i]]),
+               eval(as.name(f2))(l2[[i]])
+             )
+           }) -> sample_check
+
+    if (any(sample_check)) {
+      stop(cli::cli_alert_danger(
+        paste0("The ", f1, " in ", cli::style_bold(list_1), " elements: \"",
+              paste(names(l1)[sample_check], collapse = ", "),
+              "\" should match the ", f2, " of ", cli::style_bold(list_2))
+      ))
+    }
+  }
+
+  ## check assay_list samples
+  name_match("assay_list", "sample_metadata_list")
+
+  ## check map_list samples
+  name_match("map_list", "sample_metadata_list", f1 = 'rownames')
+
+  ## check qc_data_list samples
+  if (!is.null(qc_data_list)) {
+    name_match("qc_data_list", "sample_metadata_list",  f1 = 'rownames')
+  }
+
+  ## check map_list columns and return unmatched
+  sapply(map_list,
+         function(x) {
+           !identical(colnames(x), c("primary", "colname"))
+         }) -> map_check
+
+  if (any(map_check)) {
     stop(cli::cli_alert_danger(
       paste(cli::style_bold("primary"), "and", cli::style_bold("colname"),
-        "columns are not found in", cli::style_bold("map_rna!"),
-        sep = " "
-      )
+            "columns are not found in",
+            paste(names(map_list)[map_check], collapse = ", "))
     ))
   }
 
-  if (!all(colnames(map_protein) == c("primary", "colname"))) {
-    stop(cli::cli_alert_danger(
-      paste(cli::style_bold("primary"), "and", cli::style_bold("colname"),
-        "columns are not found in", cli::style_bold("map_protein!"),
-        sep = " "
-      )
-    ))
-  }
-
-  if (!all(colnames(rawdata_rna) == rownames(rna_qc_data_matrix))) {
-    stop(cli::cli_alert_danger(
-      paste("The columns in the", cli::style_bold("rawdata_rna"),
-        "should be same as the rows in", cli::style_bold("rna_qc_data_matrix"),
-        sep = " "
-      )
-    ))
-  }
-
-
-  individual_metadata <- as.data.frame(individual_metadata)
-
-  if (individual_to_sample == TRUE) {
-    map_rna <- data.frame(
-      primary = colnames(rawdata_rna),
-      colname = colnames(rawdata_rna),
-      stringsAsFactors = FALSE
-    )
-
-    map_protein <- data.frame(
-      primary = colnames(rawdata_protein),
-      colname = colnames(rawdata_protein),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  if (individual_to_sample == FALSE) {
-    map_l <- list(
-      data.frame(map_rna),
-      data.frame(map_protein)
-    )
-  }
-
-  names(map_l) <- c(
-    "rna_raw",
-    "protein_raw"
-  )
-  suppressMessages({
-  dfmap <- MultiAssayExperiment::listToMap(map_l)
-
-  rawdata_rna <- rawdata_rna[!duplicated(rownames(rawdata_rna)), ]
-
-  rna_id_type <- get_ID_type(rownames(rawdata_rna))
-  se_rna <- SummarizedExperiment::SummarizedExperiment(
-    assays = list("rna_raw" = rawdata_rna),
-    colData = S4Vectors::DataFrame(metadata_rna),
-    rowData = magrittr::set_names(
-      S4Vectors::DataFrame(gene_id = as.character(rownames(rawdata_rna))),
-      rna_id_type
-    )
-  )
-  })
-
-  se_rna@metadata$metadata <- metadata_rna
-
+  ## load reference
   if (organism == "human") {
     EnsDb <- EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86
   }
@@ -153,97 +180,91 @@ generate_multiassay <- function(rawdata_rna,
     EnsDb <- org.Mm.eg.db::org.Mm.eg.db
   }
 
-  if (rna_id_type == "ensembl_gene_id") {
-    # ID conversion using biomart
-    cli::cli_alert_success("Ensembl ID conversion to gene symbol")
-    cli::cli_alert_success("Retrieval of gene biotype")
+  ## generate summarized experiment object function
+  generate_se_list <- function(data_l, metadata_l, assay_types) {
+    lapply(1:length(data_l), function(i) {
+      name <- names(metadata_l)[[i]]
+      type <- assay_types[i]
+      data <- data_l[[i]]
+      metadata <- metadata_l[[i]]
 
-    rna_values <- se_rna@elementMetadata@listData[[rna_id_type]]
+      data <- data[!duplicated(rownames(data)), ]
 
-    rna_df <- AnnotationDbi::select(EnsDb,
-      keys = rna_values,
-      columns = c("SYMBOL", "GENEBIOTYPE")
-    )
+      se <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(name = data),
+        colData = S4Vectors::DataFrame(metadata),
+        metadata = metadata
+      )
 
-    se_rna@elementMetadata@listData$gene_name <- rna_df$SYMBOL[match(
-      rna_values, rna_df$GENEID
-    )]
+      if (type %in% c("rna_raw", "protein_raw")) {
+        cli::cli_alert_success(
+          paste("Retrieval of feature annotation:", cli::style_bold(name))
+        )
+        id_type <- get_ID_type(rownames(data))
+        SummarizedExperiment::rowData(se) <-
+          magrittr::set_names(
+            S4Vectors::DataFrame(gene_id = as.character(rownames(data))),
+            id_type
+          )
+        annot <- rownames(se)
+        keytypes <- c(
+          "gene_name" = "SYMBOL", "ensembl_gene_id" = "GENEID",
+          "uniprot_id" = "UNIPROTID", "entrez_gene_id" = "ENTREZID",
+          "gene_biotype" = "GENEBIOTYPE"
+        )
+        keytype = keytypes[id_type]
+        columns <- c("SYMBOL", "GENEID", "ENTREZID", "GENEBIOTYPE")
+        AnnotationDbi::select(
+          EnsDb,
+          keys = annot,
+          keytype = keytype,
+          columns = columns
+        ) -> annot_df
+        names(annot_df) <- names(keytypes)[match(names(annot_df), keytypes)]
+        annot_df <- annot_df[match(annot, annot_df[, names(keytype)]), ]
+        annot_df[, names(keytype)] <- annot
+        rowData(se) <- annot_df
+      } else {
+        cli::cli_alert_info(
+          paste(
+            "Skipping feature annotation for generic data class:",
+            cli::style_bold(name)
+          )
+        )
+      }
 
-
-    se_rna@elementMetadata@listData$gene_biotype <- rna_df$GENEBIOTYPE[match(
-      rna_values, rna_df$GENEID
-    )]
+      return(se)
+    }) -> se_list
+    names(se_list) <- names(data_l)
+    return(se_list)
   }
 
-  if (rna_id_type == "gene_name") {
-    rna_values <- se_rna@elementMetadata@listData[[rna_id_type]]
-    cli::cli_alert_success("Retrieval of gene biotype")
-    rna_df <- AnnotationDbi::select(EnsDb,
-      keys = rna_values,
-      columns = c("SYMBOL", "GENEBIOTYPE")
-    )
+  se_list <- generate_se_list(assay_list, sample_metadata_list, assay_types)
 
-    se_rna@elementMetadata@listData$gene_biotype <- rna_df$GENEBIOTYPE[match(
-      rna_values, rna_df$GENEID
-    )]
+  ## add qc data to metadata
+  if (!is.null(qc_data_list)) {
+    lapply(1:list_length, function(i){
+      se <- se_list[[i]]
+      qc <- qc_data_list[[i]]
+      se@metadata$rna_qc_data <- qc[colnames(se), ]
+    }) -> se_list
   }
 
-  if (rna_qc_data) {
-    se_rna@metadata$rna_qc_data <- rna_qc_data_matrix[colnames(rawdata_rna), ]
+  ## alter rownames of individual metadata to provided column
+  if (!is.null(map_by_column)) {
+    rownames(individual_metadata) <- individual_metadata[, map_by_column]
   }
 
-  rawdata_protein <- rawdata_protein[!duplicated(rownames(rawdata_protein)), ]
-  protein_id_type <- get_ID_type(rownames(rawdata_protein))
-
+  ## generate multiassay
   suppressMessages({
-    se_protein <- SummarizedExperiment::SummarizedExperiment(
-    assays = list("protein_raw" = rawdata_protein),
-    colData = S4Vectors::DataFrame(metadata_protein),
-    rowData = magrittr::set_names(
-      S4Vectors::DataFrame(gene_id = as.character(rownames(rawdata_protein))),
-      protein_id_type
+    dfmap <- MultiAssayExperiment::listToMap(map_list)
+    multiassay <- MultiAssayExperiment::MultiAssayExperiment(
+      se_list,
+      colData = S4Vectors::DataFrame(individual_metadata),
+      sampleMap = S4Vectors::DataFrame(dfmap)
     )
-  )
-
-  se_protein@metadata$metadata <- metadata_protein
   })
 
-  if (protein_id_type == "uniprot_id") {
-    # ID conversion using biomart
-    cli::cli_alert_success("UniProt ID conversion to gene name ")
-    protein_values <- se_protein@elementMetadata@listData[[protein_id_type]]
-    protein_values <- sub("\\-.*", "", protein_values)
-
-
-    protein_df <- AnnotationDbi::select(EnsDb,
-      keys = protein_values,
-      keytype = "UNIPROTID",
-      columns = c("SYMBOL")
-    )
-
-    se_protein@elementMetadata@listData$gene_name <- protein_df$SYMBOL[match(
-      protein_values,
-      protein_df$UNIPROTID
-    )]
-  }
-
-
-  rownames(individual_metadata) <- individual_metadata[, map_by_column]
-  suppressMessages({
-  multiassay <- MultiAssayExperiment::MultiAssayExperiment(
-    list(
-      "rna_raw" = se_rna,
-      "protein_raw" = se_protein
-    ),
-    colData = S4Vectors::DataFrame(individual_metadata),
-    sampleMap = S4Vectors::DataFrame(dfmap)
-  )
-  })
-
-  cli::cli_alert_success("RNA raw data loaded")
-  print(se_rna)
-  cli::cli_alert_success("Protein raw data loaded")
-  print(se_protein)
   cli::cli_alert_success("MultiAssayExperiment object generated!")
 
   return(multiassay)

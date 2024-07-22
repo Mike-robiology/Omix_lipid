@@ -5,21 +5,24 @@
 \title{Generate a MultiAssayExperiment object from multiple single-omics data}
 \usage{
 generate_multiassay(
-  rawdata_rna,
-  rawdata_protein,
-  individual_to_sample = FALSE,
-  map_rna,
-  map_protein,
-  metadata_rna,
-  metadata_protein,
+  assay_list,
   individual_metadata,
-  map_by_column,
-  rna_qc_data = FALSE,
-  rna_qc_data_matrix,
+  map_list = NULL,
+  sample_metadata_list = NULL,
+  map_by_column = NULL,
+  qc_data_list = NULL,
   organism = "human"
 )
 }
 \arguments{
+\item{individual_metadata}{A data-frame containing sample level metadata}
+
+\item{map_by_column}{The common column name to link \code{metadata_rna}
+and \code{metadata_protein} to the \code{individual_metadata}}
+
+\item{organism}{The organism type for transcripts and proteins.
+Possible values are \code{human} and \code{mouse}. Default to \code{human}.}
+
 \item{rawdata_rna}{A data-frame containing raw RNA count where rows and
 columns correspond to genes and samples respectively}
 
@@ -46,18 +49,10 @@ where rownames are same as the colnames of \code{rawdata_rna} data.frame}
 metadata where rownames are same as the colnames of \code{rawdata_protein}
 data.frame}
 
-\item{individual_metadata}{A data-frame containing sample level metadata}
-
-\item{map_by_column}{The common column name to link \code{metadata_rna}
-and \code{metadata_protein} to the \code{individual_metadata}}
-
 \item{rna_qc_data}{Logical whether to add rna QC data.}
 
 \item{rna_qc_data_matrix}{A data.frame containing RNA qc level data where
 rownames are same as the colnames of \code{rawdata_rna} data.frame.}
-
-\item{organism}{The organism type for transcripts and proteins.
-Possible values are \code{human} and \code{mouse}. Default to \code{human}.}
 }
 \value{
 a MultiAssayExperiment object
@@ -72,6 +67,7 @@ Other Pre-processing:
 \code{\link{combat_correction}()},
 \code{\link{filter_protein}()},
 \code{\link{median_centering_correction}()},
+\code{\link{process_generic}()},
 \code{\link{process_protein}()},
 \code{\link{process_rna}()}
 }

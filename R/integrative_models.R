@@ -263,14 +263,12 @@ integrate_with_MBPLS <- function(multimodal_omics,
 integrate_with_MOFA <- function(multimodal_omics,
                                 num_factors = 5,
                                 scale_views = TRUE,
+                                use_basilisk = TRUE,
                                 metadata) {
   #python_path <- Sys.which("python")
   #reticulate::use_python(python_path, required = NULL)
 
-  X <- list(
-    mRNA = multimodal_omics[[1]],
-    proteins = multimodal_omics[[2]]
-  )
+  X <- multimodal_omics
 
   MOFAobject <- MOFA2::create_mofa(X)
   data_opts <- MOFA2::get_default_data_options(MOFAobject)
@@ -289,8 +287,8 @@ integrate_with_MOFA <- function(multimodal_omics,
     model_options = model_opts,
     training_options = train_opts
   )
-  
-  MOFAobject <- MOFA2::run_mofa(MOFAobject, use_basilisk = TRUE)
+
+  MOFAobject <- MOFA2::run_mofa(MOFAobject, use_basilisk = use_basilisk)
   metadata$sample <- rownames(metadata)
   MOFA2::samples_metadata(MOFAobject) <- metadata
   model <- MOFAobject
@@ -394,7 +392,7 @@ integrate_with_MEFISTO <- function(multimodal_omics,
 #' @examples # There is no example and please refer to vignette.
 #' @references Chalise P, Fridley BL (2017). Integrative clustering of multi-level omic data based on non-negative matrix factorization algorithm. PLoS One, 12(5):e0176278.
 #' Tibshirani, R., Walther, G., Hastie, T. (2001). Estimating the number of data clusters via the Gap statistic. J R Stat Soc Series B Stat Methodol, 63(2):411-423.
-#' Lu, X., et al. (2020). MOVICS: an R package for multi-omics integration and visualization in cancer subtyping. Bioinformatics, 36(22-23), 5539–5541. 
+#' Lu, X., et al. (2020). MOVICS: an R package for multi-omics integration and visualization in cancer subtyping. Bioinformatics, 36(22-23), 5539–5541.
 getClustNum <- function(data = NULL,
                         is.binary = rep(FALSE, length(data)),
                         try.N.clust = 2:8,

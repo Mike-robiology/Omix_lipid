@@ -51,38 +51,44 @@ process_rna <- function(multiassay,
                         batch='batch',
                         remove_sample_outliers=FALSE) {
   "%!in%" <- function(x, y) !("%in%"(x, y))
+  assay_names <- names(multiassay)
+  rna_assay <- grep('rna_raw', assay_names, value = TRUE)
   suppressMessages({
     rna_raw <- MultiAssayExperiment::getWithColData(
       multiassay,
-      "rna_raw"
+      rna_assay
     )
   })
 
   colData <- data.frame(SummarizedExperiment::colData(rna_raw))
 
+  design_formula <- ~1 # default formula
   if (!is.null(levels)) {
     colData[[dependent]] <- factor(colData[[dependent]], levels = levels)
   }
 
-  if (is.null(batch)) {
-    design_formula <- as.formula(paste("~", dependent, "+", paste(covariates,
-      sep = " ",
-      collapse = " + "
-    )))
+  if (!is.null(dependent)) { # null dependent = no modelling
+    if (is.null(batch)) {
+      design_formula <- as.formula(paste("~", dependent, "+", paste(covariates,
+                                                                    sep = " ",
+                                                                    collapse = " + "
+      )))
+    }
+    if (!is.null(batch)) {
+      design_formula <- as.formula(paste("~", dependent, "+", paste(covariates,
+                                                                    sep = " ",
+                                                                    collapse = " + "
+      ), "+ ", batch))
+    }
   }
-  if (!is.null(batch)) {
-    design_formula <- as.formula(paste("~", dependent, "+", paste(covariates,
-      sep = " ",
-      collapse = " + "
-    ), "+ ", batch))
-  }
+
 
   for (i in covariates) {
     rna_raw <- rna_raw[, !is.na(rna_raw[[paste(i)]])]
   }
   suppressMessages({
-  countData <- SummarizedExperiment::assays(rna_raw)[[1]]
-  colData <- colData[colnames(countData), ]
+    countData <- SummarizedExperiment::assays(rna_raw)[[1]]
+    colData <- colData[colnames(countData), ]
   })
 
   if (!all(colnames(countData) == rownames(colData))) {
@@ -112,6 +118,7 @@ process_rna <- function(multiassay,
   mean_values_feature_df=data.frame(count=rowMeans(counts(dds))) %>% tibble::rownames_to_column(var='ensembl')%>% as.data.frame()
   mean_values_feature_df$gene_id=make.unique(get_ID_names(multiassay,
                                                           id=mean_values_feature_df$ensembl,
+                                                          assay_name = rna_assay,
                                                           omic = "rna",
                                                           from = "ensembl_gene_id",
                                                           to = "gene_name"))
@@ -190,6 +197,7 @@ process_rna <- function(multiassay,
     mean_values_feature_df=data.frame(count=rowMeans(counts(dds))) %>% tibble::rownames_to_column(var='ensembl')%>% as.data.frame()
     mean_values_feature_df$gene_id=make.unique(get_ID_names(multiassay,
                                                             id=mean_values_feature_df$ensembl,
+                                                            assay_name = rna_assay,
                                                             omic = "rna",
                                                             from = "ensembl_gene_id",
                                                             to = "gene_name"))
@@ -199,6 +207,7 @@ process_rna <- function(multiassay,
                                                 genes_filtered_out=setdiff(rnas_raw,rnas_filtered),
                                                 genes_filtered_out_id= make.unique(get_ID_names(multiassay,
                                                                          id=setdiff(rnas_raw,rnas_filtered),
+                                                                         assay_name = rna_assay,
                                                                          omic = "rna",
                                                                          from = "ensembl_gene_id",
                                                                          to = "gene_name")))
@@ -270,7 +279,7 @@ process_rna <- function(multiassay,
     if (!is.null(batch)) {
       batch_data <- colData[batch]
       batch_data[[batch]] <- as.factor(batch_data[[batch]])
-      
+
       suppressMessages({
       matrix <- limma::removeBatchEffect(
         matrix,
@@ -329,28 +338,29 @@ process_rna <- function(multiassay,
                                                          percentage_outliers= length(outliers)/dim2,
                                                          detected_sample_outliers= outliers)
   }
-  suppressMessages({ 
+  suppressMessages({
   matrix <- as.data.frame(matrix)
   map <- MultiAssayExperiment::sampleMap(multiassay)
   map_df <- data.frame(map@listData)
-  map_df <- map_df[which(map_df$assay == "rna_raw"), ]
+  map_df <- map_df[which(map_df$assay == rna_assay), ]
   map_df <- map_df[match(
     colnames(matrix),
     map_df$colname
   ), ][c("primary", "colname")]
-  map_df$assay <- "rna_processed"
+  new_name <- gsub("raw","processed",rna_assay)
+  map_df$assay <- new_name
   multiassay <- c(multiassay,
-    rna_processed = matrix,
+    tmp_name_rna = matrix,
     sampleMap = map_df
   )
-
+  names(multiassay)[length(names(multiassay))] <- new_name
   MultiAssayExperiment::metadata(multiassay)$dds <- dds
 
 
   if (remove_sample_outliers) {
     MultiAssayExperiment::metadata(multiassay)$OutliersFlags$rna <- outliers
   }
-  
+
   MultiAssayExperiment::metadata(multiassay)$parameters$processing$rna <- list(
     transformation=transformation,
     min_count = min_count,

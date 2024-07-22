@@ -7,6 +7,7 @@
 get_ID_names(
   multiassay,
   id,
+  assay_name,
   omic = "protein",
   from = "uniprot_id",
   to = "gene_name"

@@ -1,0 +1,43 @@
+# Motivation
+generic data class to allow for flexibility of intergration with the main datatypes.
+limited changes to integration only -> avoid confusion around statistical testing generic data;
+    limit changes required to code base
+
+# Change notes
+### generate_multiassay()
+- Change data input to a list of assays; names in list = names of the assay; [DONE]
+    datatype is specified in the names -> "assay_name [type]" (assay type can be "rna_raw", "protein_raw", "generic_raw");
+    at least two list elements will have to be provided;
+    map_list and sample_metadata_list must have matching names + order
+- Make sample metadata optional; defaults to copy individual metadata [DONE]
+- Remove individual to sample parameter; inferred from empty map parameter [DONE]
+- Enable summarised experiment processing on arbitrary assays; iterate over a list [DONE]
+- Make several parameters optional [DONE]
+- NOTE: rna and protein assays are limited to 1 currently; generic can be any number
+
+### process_generic() - limited function to process generic data
+- allow any transfomation to be applied to the data if wished [DONE]
+- Optional scaling [DONE]
+- Optional outlier detection [DONE]
+
+### process_rna
+- convert to working on list naming [DONE]
+
+### process_protein
+- convert to  working on list naming [DONE]
+
+### get_ID_names
+- convert to working on list naming [DONE]
+
+### vertical_integration()
+- Allowed processing for > 2 slots [DONE]
+- Exposed MOFA' use_basilisk function [DONE]
+
+## other
+- removed synapser from DESCRIPTION due to problematic install [DONE]
+
+# TODO
+- Run complete tests
+- Enable processing of > 1 rna or protein assay
+- Update documentation
+- Add instructions for installing correct MOFA version for use_basilisk = FALSE

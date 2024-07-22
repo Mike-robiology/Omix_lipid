@@ -55,10 +55,12 @@ process_protein <- function(multiassay,
 
   "%!in%" <- function(x, y) !("%in%"(x, y))
 
+  protein_slot <- grep('protein_raw', names(multiassay), value = TRUE)
+
   suppressMessages({
   protein_raw <- MultiAssayExperiment::getWithColData(
     multiassay,
-    "protein_raw"
+    protein_slot
   )
   colData <- data.frame(SummarizedExperiment::colData(protein_raw))
 
@@ -237,17 +239,18 @@ process_protein <- function(multiassay,
   suppressMessages({
   map <- MultiAssayExperiment::sampleMap(multiassay)
   map_df <- data.frame(map@listData)
-  map_df <- map_df[which(map_df$assay == "protein_raw"), ]
+  map_df <- map_df[which(map_df$assay == protein_slot), ]
   map_df <- map_df[match(
     colnames(matrix),
     map_df$colname
   ), ][c("primary", "colname")]
-  map_df$assay <- "protein_processed"
-
+  new_name <- gsub('raw', 'processed', protein_slot)
+  map_df$assay <- new_name
   multiassay <- c(multiassay,
-                  protein_processed = matrix,
+                  tmp_name_prot = matrix,
                   sampleMap = map_df
   )
+  names(multiassay)[length(names(multiassay))] <- new_name
 
   MultiAssayExperiment::metadata(multiassay)$parameters$processing$protein <-
     list(

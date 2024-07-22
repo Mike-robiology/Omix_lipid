@@ -30,6 +30,7 @@ Other Pre-processing:
 \code{\link{combat_correction}()},
 \code{\link{generate_multiassay}()},
 \code{\link{median_centering_correction}()},
+\code{\link{process_generic}()},
 \code{\link{process_protein}()},
 \code{\link{process_rna}()}
 }

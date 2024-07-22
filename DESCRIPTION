@@ -12,7 +12,11 @@ Authors@R:
            family = "Fancy",
            role = c("aut"),
            email = "n.fancy@imperial.ac.uk",
-           comment = c(ORCID = "0000-0002-6481-6266"))
+           comment = c(ORCID = "0000-0002-6481-6266")),
+    person(given = "Michael",
+           family = "Thomas",
+           role = c("aut"),
+           email = "michael.thomas21@imperial.ac.uk")
     )
 Maintainer: Eleonore Schneegans <eleonore.schneegans17@imperial.ac.uk>
 Description: *Omix* provides a generalisable framework to efficiently process, integrate and analyse multi-omics data in an end-to-end manner. 
@@ -89,7 +93,6 @@ Imports:
       iClusterPlus,
       mogsa,
       SNFtool,
-      synapser,
       GeneOverlap,
       multiGSEA,
       pheatmap,

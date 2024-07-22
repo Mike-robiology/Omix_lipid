@@ -6,7 +6,7 @@
 \usage{
 get_multimodal_object(
   multiassay,
-  slots = c("rna_processed", "protein_processed"),
+  slots = c(),
   intersect_genes = FALSE,
   ID_type = "gene_name",
   ...

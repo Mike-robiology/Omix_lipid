@@ -36,10 +36,7 @@
 #'
 
 vertical_integration <- function(multiassay,
-                                 slots = c(
-                                   "rna_processed",
-                                   "protein_processed"
-                                 ),
+                                 slots = c(),
                                  integration,
                                  intersect_genes = FALSE,
                                  ID_type = "gene_name",
@@ -57,11 +54,12 @@ vertical_integration <- function(multiassay,
                                  time = "pseudotime",
                                  scale_views = TRUE,
                                  try.N.clust = 2:4,
-                                 most_variable_feature = FALSE) {
+                                 most_variable_feature = FALSE,
+                                 use_basilisk = TRUE) {
 
   fargs <- c(as.list(environment()))
   suppressMessages({
-  multimodal <- do.call(get_multimodal_object, fargs)
+    multimodal <- do.call(get_multimodal_object, fargs)
   })
   multimodal_omics <- multimodal[[1]]
 
@@ -80,7 +78,9 @@ vertical_integration <- function(multiassay,
 
   metadata <- multimodal[[2]]
 
-  Y <- metadata[[dependent]]
+  if (!is.null(dependent)) {
+    Y <- metadata[[dependent]]
+  }
 
   if (integration == "DIABLO") {
     Y <- factor(Y, levels = levels)
@@ -131,7 +131,8 @@ vertical_integration <- function(multiassay,
       multimodal_omics = multimodal_omics,
       num_factors = fargs$num_factors,
       scale_views = fargs$scale_views,
-      metadata = metadata
+      metadata = metadata,
+      use_basilisk = use_basilisk
     )
 
     suppressMessages({int <- do.call(integrate_with_MOFA, args)})
